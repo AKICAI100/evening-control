@@ -1,0 +1,606 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#03070d">
+  <title>EVENING CONTROL</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #03070d;
+      --panel: rgba(9, 20, 34, .78);
+      --panel-strong: rgba(10, 28, 47, .94);
+      --line: rgba(55, 143, 205, .18);
+      --blue: #2bbcff;
+      --blue-soft: #83dcff;
+      --muted: #6d8597;
+      --text: #d8edfa;
+      --danger: #ff8c93;
+      --shadow: 0 0 24px rgba(43, 188, 255, .16);
+    }
+
+    * { box-sizing: border-box; }
+
+    html { min-height: 100%; background: var(--bg); }
+
+    body {
+      min-height: 100vh;
+      min-height: 100dvh;
+      margin: 0;
+      overflow-x: hidden;
+      background:
+        radial-gradient(circle at 50% -10%, rgba(26, 103, 154, .19), transparent 40%),
+        linear-gradient(180deg, #050c15 0%, var(--bg) 48%, #02050a 100%);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: .01em;
+    }
+
+    body::before {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      content: "";
+      pointer-events: none;
+      opacity: .32;
+      background-image: linear-gradient(rgba(52, 144, 204, .025) 1px, transparent 1px);
+      background-size: 100% 4px;
+    }
+
+    button, input { font: inherit; }
+    button { color: inherit; }
+
+    .app {
+      width: min(100%, 480px);
+      min-height: 100dvh;
+      margin: 0 auto;
+      padding: max(22px, env(safe-area-inset-top)) 18px max(28px, env(safe-area-inset-bottom));
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 26px;
+    }
+
+    .brand {
+      margin: 0;
+      color: var(--blue-soft);
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .2em;
+      text-shadow: 0 0 15px rgba(43, 188, 255, .5);
+    }
+
+    .settings-button, .close-button {
+      display: grid;
+      width: 42px;
+      height: 42px;
+      padding: 0;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      background: rgba(9, 22, 36, .72);
+      cursor: pointer;
+      transition: border-color .2s, color .2s, box-shadow .2s, transform .2s;
+    }
+
+    .settings-button:hover, .settings-button:focus-visible,
+    .close-button:hover, .close-button:focus-visible {
+      color: var(--blue);
+      border-color: rgba(43, 188, 255, .6);
+      outline: none;
+      box-shadow: var(--shadow);
+      transform: rotate(12deg);
+    }
+
+    .settings-button svg, .close-button svg { width: 19px; height: 19px; }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+
+    .metric {
+      min-width: 0;
+      padding: 15px 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: linear-gradient(145deg, rgba(12, 30, 49, .8), rgba(6, 14, 24, .72));
+      box-shadow: inset 0 1px rgba(255, 255, 255, .025);
+    }
+
+    .metric-label {
+      display: block;
+      min-height: 28px;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .13em;
+      line-height: 1.45;
+    }
+
+    .metric-time {
+      display: block;
+      color: var(--blue);
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: clamp(31px, 10vw, 43px);
+      font-weight: 600;
+      letter-spacing: -.07em;
+      line-height: 1;
+      text-shadow: 0 0 20px rgba(43, 188, 255, .35);
+    }
+
+    .metric-time.delayed { color: var(--danger); text-shadow: 0 0 18px rgba(255, 140, 147, .25); }
+
+    .delay-note {
+      min-height: 17px;
+      margin: 8px 0 0;
+      color: var(--danger);
+      font-size: 10px;
+      font-weight: 650;
+      letter-spacing: .05em;
+    }
+
+    .section-heading {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 2px 12px;
+      color: var(--muted);
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .18em;
+    }
+
+    .section-heading::after { flex: 1; height: 1px; background: var(--line); content: ""; }
+
+    .timeline { display: grid; gap: 8px; }
+
+    .activity {
+      position: relative;
+      display: grid;
+      grid-template-columns: 42px 1fr auto;
+      grid-template-areas: "icon info time" "icon progress progress";
+      gap: 8px 12px;
+      align-items: center;
+      padding: 12px 13px;
+      overflow: hidden;
+      border: 1px solid rgba(65, 125, 166, .13);
+      border-radius: 14px;
+      background: var(--panel);
+      opacity: .72;
+      transition: opacity .25s, border-color .25s, background .25s, box-shadow .25s, transform .25s;
+    }
+
+    .activity.current {
+      opacity: 1;
+      border-color: rgba(43, 188, 255, .56);
+      background: linear-gradient(110deg, rgba(12, 41, 65, .96), rgba(7, 21, 35, .92));
+      box-shadow: var(--shadow), inset 3px 0 var(--blue);
+      transform: translateX(2px);
+    }
+
+    .activity.current::after {
+      position: absolute;
+      top: 0;
+      left: -35%;
+      width: 30%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(78, 200, 255, .06), transparent);
+      content: "";
+      animation: scan 4s ease-in-out infinite;
+    }
+
+    @keyframes scan { 50%, 100% { left: 120%; } }
+
+    @media (prefers-reduced-motion: reduce) { .activity.current::after { animation: none; } }
+
+    .activity-icon {
+      display: grid;
+      grid-area: icon;
+      width: 42px;
+      height: 42px;
+      place-items: center;
+      border: 1px solid rgba(57, 146, 202, .18);
+      border-radius: 12px;
+      background: rgba(2, 9, 16, .55);
+      color: #8ba7ba;
+    }
+
+    .activity.current .activity-icon { color: var(--blue); border-color: rgba(43, 188, 255, .4); }
+    .activity-icon svg { width: 21px; height: 21px; stroke-width: 1.7; }
+    .activity-info { grid-area: info; min-width: 0; }
+
+    .activity-name {
+      display: block;
+      overflow: hidden;
+      color: #bcd0dc;
+      font-size: 14px;
+      font-weight: 650;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .activity.current .activity-name { color: #e9f9ff; }
+
+    .activity-duration {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 9px;
+      letter-spacing: .08em;
+    }
+
+    .activity-time {
+      grid-area: time;
+      color: #8eb4ca;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -.03em;
+    }
+
+    .activity.current .activity-time { color: var(--blue); text-shadow: 0 0 12px rgba(43, 188, 255, .4); }
+
+    .progress-track {
+      position: relative;
+      grid-area: progress;
+      height: 3px;
+      overflow: hidden;
+      border-radius: 99px;
+      background: rgba(76, 121, 148, .18);
+    }
+
+    .progress-fill {
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: #237fac;
+      transition: width .45s ease;
+    }
+
+    .activity.current .progress-fill { background: var(--blue); box-shadow: 0 0 10px var(--blue); }
+
+    .status-line {
+      margin: 14px 3px 0;
+      color: #526a79;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 9px;
+      letter-spacing: .09em;
+      text-align: right;
+    }
+
+    dialog {
+      width: min(calc(100% - 24px), 450px);
+      max-height: min(90dvh, 720px);
+      padding: 0;
+      overflow: hidden;
+      border: 1px solid rgba(43, 188, 255, .25);
+      border-radius: 20px;
+      background: #07111c;
+      color: var(--text);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, .7), var(--shadow);
+    }
+
+    dialog::backdrop { background: rgba(0, 4, 9, .78); backdrop-filter: blur(6px); }
+
+    .settings-form { max-height: min(90dvh, 720px); overflow-y: auto; padding: 20px; }
+
+    .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+    .modal-title { margin: 0; color: var(--blue-soft); font: 700 14px/1 "SFMono-Regular", Consolas, monospace; letter-spacing: .14em; }
+    .close-button { width: 36px; height: 36px; }
+    .close-button:hover { transform: none; }
+
+    .field-group { margin: 0 0 22px; padding: 0; border: 0; }
+    .field-group legend { width: 100%; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 9px; font-weight: 700; letter-spacing: .16em; }
+    .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .field { display: grid; gap: 7px; min-width: 0; }
+    .field.wide { grid-column: 1 / -1; }
+    .field label { color: #89a3b5; font-size: 11px; font-weight: 600; }
+    .input-wrap { position: relative; }
+
+    input {
+      width: 100%;
+      min-height: 45px;
+      padding: 10px 12px;
+      border: 1px solid rgba(65, 137, 183, .24);
+      border-radius: 10px;
+      outline: none;
+      background: #030a11;
+      color: var(--blue-soft);
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 16px;
+      transition: border-color .2s, box-shadow .2s;
+    }
+
+    input[type="number"] { padding-right: 42px; }
+    input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(43, 188, 255, .1); }
+    .unit { position: absolute; top: 50%; right: 12px; color: var(--muted); font-size: 10px; transform: translateY(-50%); pointer-events: none; }
+    .form-error { min-height: 17px; margin: -10px 0 10px; color: var(--danger); font-size: 11px; }
+
+    .form-actions { position: sticky; bottom: -20px; display: grid; grid-template-columns: .8fr 1.2fr; gap: 10px; padding: 14px 0 2px; background: linear-gradient(transparent, #07111c 24%); }
+    .button { min-height: 46px; border: 1px solid rgba(43, 188, 255, .28); border-radius: 11px; background: rgba(7, 24, 38, .9); color: #8fb0c4; font-size: 11px; font-weight: 750; letter-spacing: .08em; cursor: pointer; }
+    .button.primary { border-color: var(--blue); background: var(--blue); color: #00111c; box-shadow: 0 0 20px rgba(43, 188, 255, .22); }
+    .button:hover, .button:focus-visible { outline: none; filter: brightness(1.12); }
+
+    @media (max-width: 350px) {
+      .app { padding-inline: 12px; }
+      .hero { gap: 7px; }
+      .metric { padding-inline: 10px; }
+      .activity { grid-template-columns: 38px 1fr auto; padding-inline: 10px; gap: 8px 9px; }
+      .activity-icon { width: 38px; height: 38px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <h1 class="brand">EVENING CONTROL</h1>
+      <button class="settings-button" id="open-settings" type="button" aria-label="設定を開く">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 8.94 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.57 15 1.7 1.7 0 0 0 3 14H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.94a1.7 1.7 0 0 0-.34-1.88L4.2 7a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.57h.01A1.7 1.7 0 0 0 10 3V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9v.01A1.7 1.7 0 0 0 21 10h.01a2 2 0 1 1 0 4h-.09A1.7 1.7 0 0 0 19.4 15Z"/></svg>
+      </button>
+    </header>
+
+    <section class="hero" aria-label="今日の予定">
+      <div class="metric">
+        <span class="metric-label">RETURN<br>HOME</span>
+        <time class="metric-time" id="home-display">20:00</time>
+        <p class="delay-note" aria-hidden="true"></p>
+      </div>
+      <div class="metric">
+        <span class="metric-label">ESTIMATED<br>BEDTIME</span>
+        <time class="metric-time" id="bed-display">22:30</time>
+        <p class="delay-note" id="delay-note" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <h2 class="section-heading">EVENING SEQUENCE</h2>
+    <section class="timeline" id="timeline" aria-label="夜の行動予定"></section>
+    <p class="status-line" id="status-line">AUTO SYNC · 30 SEC</p>
+  </main>
+
+  <dialog id="settings-dialog" aria-labelledby="settings-title">
+    <form class="settings-form" id="settings-form" method="dialog">
+      <header class="modal-header">
+        <h2 class="modal-title" id="settings-title">SYSTEM SETTINGS</h2>
+        <button class="close-button" id="close-settings" type="button" aria-label="設定を閉じる">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
+      </header>
+
+      <fieldset class="field-group">
+        <legend>TIME PARAMETERS</legend>
+        <div class="field-grid">
+          <div class="field"><label for="home-input">Return Home</label><input id="home-input" name="home" type="time" required></div>
+          <div class="field"><label for="target-input">Target Bedtime</label><input id="target-input" name="target" type="time" required></div>
+        </div>
+      </fieldset>
+
+      <fieldset class="field-group">
+        <legend>ACTIVITY DURATION</legend>
+        <div class="field-grid">
+          <div class="field"><label for="dinner-input">Dinner</label><div class="input-wrap"><input id="dinner-input" name="dinner" type="number" min="1" max="240" required><span class="unit">MIN</span></div></div>
+          <div class="field"><label for="free-input">Free Time (max)</label><div class="input-wrap"><input id="free-input" name="freeMax" type="number" min="0" max="240" required><span class="unit">MIN</span></div></div>
+          <div class="field"><label for="bath-input">Bath (normal)</label><div class="input-wrap"><input id="bath-input" name="bathNormal" type="number" min="1" max="240" required><span class="unit">MIN</span></div></div>
+          <div class="field"><label for="bath-min-input">Bath (minimum)</label><div class="input-wrap"><input id="bath-min-input" name="bathMin" type="number" min="1" max="240" required><span class="unit">MIN</span></div></div>
+          <div class="field"><label for="stretch-input">Stretch</label><div class="input-wrap"><input id="stretch-input" name="stretch" type="number" min="1" max="240" required><span class="unit">MIN</span></div></div>
+          <div class="field"><label for="supplements-input">Supplements</label><div class="input-wrap"><input id="supplements-input" name="supplements" type="number" min="1" max="240" required><span class="unit">MIN</span></div></div>
+        </div>
+      </fieldset>
+
+      <p class="form-error" id="form-error" role="alert"></p>
+      <div class="form-actions">
+        <button class="button" id="reset-settings" type="button">RESET</button>
+        <button class="button primary" type="submit" value="save">SAVE SETTINGS</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const STORAGE_KEY = 'evening-control-settings-v1';
+      const DEFAULTS = Object.freeze({
+        home: '20:00', target: '22:30', dinner: 30, freeMax: 20,
+        bathNormal: 30, bathMin: 20, stretch: 15, supplements: 5
+      });
+
+      const icons = {
+        dinner: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M7 3v8M4 3v5a3 3 0 0 0 6 0V3M7 11v10M16 3v18M16 3c3 1.2 4 3.8 4 7h-4"/></svg>',
+        free: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 7h8a5 5 0 0 1 4.8 6.4l-1.1 3.8a2.5 2.5 0 0 1-4.3 1l-1.8-2.2h-3.2l-1.8 2.2a2.5 2.5 0 0 1-4.3-1l-1.1-3.8A5 5 0 0 1 8 7Z"/><path d="M7 11v4M5 13h4M16 12h.01M19 14h.01"/></svg>',
+        bath: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12h18v2a6 6 0 0 1-6 6H9a6 6 0 0 1-6-6v-2ZM6 12V6a3 3 0 0 1 5.7-1.3M5 20l-1 2M19 20l1 2"/></svg>',
+        stretch: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="4" r="2"/><path d="m9 21 1-6-3-3 3-4 2 3 3-3 4 3M12 11l2 5-1 5"/></svg>',
+        supplements: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m7.1 16.9 9.8-9.8a4.2 4.2 0 0 1 0 5.9L13 16.9a4.2 4.2 0 0 1-5.9-5.9L11 7.1"/><path d="m8.5 8.5 7 7"/></svg>',
+        wind: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 15.5A8 8 0 1 1 8.5 4 6.5 6.5 0 0 0 20 15.5Z"/><path d="M15.5 5.5h.01M18 8h.01"/></svg>',
+        sleep: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 19h16M5 19v-8h14a2 2 0 0 1 2 2v6M5 15h16M8 11V7h5a3 3 0 0 1 3 3v1"/></svg>'
+      };
+
+      const timeline = document.querySelector('#timeline');
+      const dialog = document.querySelector('#settings-dialog');
+      const form = document.querySelector('#settings-form');
+      const error = document.querySelector('#form-error');
+      let settings = loadSettings();
+      let schedule = [];
+
+      function validTime(value) {
+        return typeof value === 'string' && /^([01]\\d|2[0-3]):[0-5]\\d$/.test(value);
+      }
+
+      function sanitize(raw) {
+        const clean = { ...DEFAULTS };
+        if (raw && validTime(raw.home)) clean.home = raw.home;
+        if (raw && validTime(raw.target)) clean.target = raw.target;
+        ['dinner', 'freeMax', 'bathNormal', 'bathMin', 'stretch', 'supplements'].forEach((key) => {
+          const value = raw && Object.prototype.hasOwnProperty.call(raw, key) ? Number(raw[key]) : NaN;
+          if (Number.isFinite(value)) clean[key] = Math.max(key === 'freeMax' ? 0 : 1, Math.min(240, Math.round(value)));
+        });
+        clean.bathMin = Math.min(clean.bathMin, clean.bathNormal);
+        return clean;
+      }
+
+      function loadSettings() {
+        try { return sanitize(JSON.parse(localStorage.getItem(STORAGE_KEY))); }
+        catch (_) { return { ...DEFAULTS }; }
+      }
+
+      function minutes(time) {
+        const [hours, mins] = time.split(':').map(Number);
+        return hours * 60 + mins;
+      }
+
+      function formatTime(total) {
+        const normalized = ((total % 1440) + 1440) % 1440;
+        return `${String(Math.floor(normalized / 60)).padStart(2, '0')}:${String(normalized % 60).padStart(2, '0')}`;
+      }
+
+      function calculate(config) {
+        const home = minutes(config.home);
+        let target = minutes(config.target);
+        if (target < home) target += 1440;
+
+        const available = target - home;
+        const fixed = config.dinner + config.stretch + config.supplements;
+        let free = config.freeMax;
+        let bath = config.bathNormal;
+        let shortage = Math.max(0, fixed + free + bath - available);
+        const freeCut = Math.min(free, shortage);
+        free -= freeCut;
+        shortage -= freeCut;
+        const bathCut = Math.min(Math.max(0, bath - config.bathMin), shortage);
+        bath -= bathCut;
+
+        const coreFinish = home + fixed + free + bath;
+        const bedtime = Math.max(target, coreFinish);
+        const wind = Math.max(0, bedtime - coreFinish);
+        let cursor = home;
+        const entries = [];
+
+        function add(id, name, duration) {
+          entries.push({ id, name, start: cursor, end: cursor + duration, duration });
+          cursor += duration;
+        }
+
+        add('dinner', 'Dinner', config.dinner);
+        add('free', 'Free Time', free);
+        add('bath', 'Bath', bath);
+        add('stretch', 'Stretch', config.stretch);
+        add('supplements', 'Supplements', config.supplements);
+        add('wind', 'Wind Down', wind);
+        entries.push({ id: 'sleep', name: 'Sleep', start: bedtime, end: bedtime, duration: 0 });
+        return { entries, bedtime, target, delayed: bedtime > target, delay: bedtime - target };
+      }
+
+      function render() {
+        const result = calculate(settings);
+        schedule = result.entries;
+        document.querySelector('#home-display').textContent = settings.home;
+        const bedDisplay = document.querySelector('#bed-display');
+        bedDisplay.textContent = formatTime(result.bedtime);
+        bedDisplay.classList.toggle('delayed', result.delayed);
+        document.querySelector('#delay-note').textContent = result.delayed ? `+${result.delay} MIN DELAY` : 'ON SCHEDULE';
+
+        timeline.innerHTML = schedule.map((item) => {
+          const duration = item.id === 'sleep' ? 'TARGET' : `${item.duration} MIN`;
+          return `<article class="activity" data-id="${item.id}">
+            <div class="activity-icon" aria-hidden="true">${icons[item.id]}</div>
+            <div class="activity-info"><span class="activity-name">${item.name}</span><span class="activity-duration">${duration}</span></div>
+            <time class="activity-time">${formatTime(item.start)}</time>
+            <div class="progress-track" role="progressbar" aria-label="${item.name} progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="progress-fill"></div></div>
+          </article>`;
+        }).join('');
+        updateProgress();
+      }
+
+      function getScheduleNow() {
+        const now = new Date();
+        const homeToday = new Date(now);
+        homeToday.setHours(Math.floor(minutes(settings.home) / 60), minutes(settings.home) % 60, 0, 0);
+        if (now < homeToday) homeToday.setDate(homeToday.getDate() - 1);
+        return { now, anchor: homeToday.getTime() };
+      }
+
+      function updateProgress() {
+        const { now, anchor } = getScheduleNow();
+        const nowMs = now.getTime();
+        let currentName = '';
+
+        schedule.forEach((item) => {
+          const card = timeline.querySelector(`[data-id="${item.id}"]`);
+          const start = anchor + (item.start - minutes(settings.home)) * 60000;
+          const end = anchor + (item.end - minutes(settings.home)) * 60000;
+          let progress = 0;
+          let current = false;
+
+          if (item.id === 'sleep') {
+            progress = nowMs >= start ? 100 : 0;
+          } else if (nowMs >= end) {
+            progress = 100;
+          } else if (nowMs > start && item.duration > 0) {
+            progress = Math.max(0, Math.min(100, ((nowMs - start) / (end - start)) * 100));
+            current = true;
+            currentName = item.name;
+          } else if (nowMs === start && item.duration > 0) {
+            current = true;
+            currentName = item.name;
+          }
+
+          card.classList.toggle('current', current);
+          const bar = card.querySelector('.progress-track');
+          bar.setAttribute('aria-valuenow', String(Math.round(progress)));
+          card.querySelector('.progress-fill').style.width = `${progress}%`;
+        });
+
+        const stamp = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+        document.querySelector('#status-line').textContent = currentName ? `NOW · ${currentName.toUpperCase()} · ${stamp}` : `AUTO SYNC · ${stamp}`;
+      }
+
+      function fillForm(config) {
+        Object.entries(config).forEach(([key, value]) => {
+          if (form.elements[key]) form.elements[key].value = value;
+        });
+        error.textContent = '';
+      }
+
+      function openSettings() {
+        fillForm(settings);
+        dialog.showModal();
+      }
+
+      document.querySelector('#open-settings').addEventListener('click', openSettings);
+      document.querySelector('#close-settings').addEventListener('click', () => dialog.close());
+      dialog.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); });
+
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        if (!form.reportValidity()) return;
+        const raw = Object.fromEntries(new FormData(form));
+        const next = sanitize(raw);
+        if (Number(raw.bathMin) > Number(raw.bathNormal)) {
+          error.textContent = 'Bath minimum must not exceed the normal duration.';
+          return;
+        }
+        settings = next;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+        render();
+        dialog.close();
+      });
+
+      document.querySelector('#reset-settings').addEventListener('click', () => fillForm(DEFAULTS));
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) updateProgress(); });
+      window.addEventListener('pageshow', updateProgress);
+      render();
+      setInterval(updateProgress, 30000);
+    })();
+  </script>
+</body>
+</html>
